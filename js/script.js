@@ -92,7 +92,7 @@ async function initApp() {
     if (user && user.fishermanId) {
         currentFishermanId = user.fishermanId;
         showChatInterface();
-        if (userNameDisplay) userNameDisplay.textContent = user.name || "মৎস্যজীবী";
+        if (userNameDisplay) userNameDisplay.textContent = user.name || t('user.defaultName');
         await loadUserChats();
         currentChatId = null;
     } else {
@@ -135,13 +135,13 @@ async function speakMessage(text, btn, lang) {
         if (match) utterance.voice = match;
 
         btn.classList.add('speaking');
-        btn.title     = 'পড়া বন্ধ করুন';
+        btn.title     = t('readAloud.stop');
         btn.innerHTML = '<i class="fas fa-stop-circle"></i>';
         activeSpeakBtn = btn;
 
         utterance.onend = utterance.onerror = () => {
             btn.classList.remove('speaking');
-            btn.title     = 'শুনুন';
+            btn.title     = t('readAloud.listen');
             btn.innerHTML = '<i class="fas fa-volume-up"></i>';
             if (activeSpeakBtn === btn) activeSpeakBtn = null;
         };
@@ -160,6 +160,7 @@ async function speakMessage(text, btn, lang) {
 
 // ==================== VOICE INPUT google cloud ====================
 let liveTranscriptEl, voiceMicActive, voiceSendBtn;
+let voiceTranscriptReady = false;
 
 function initSpeechRecognition() {
     liveTranscriptEl = document.getElementById('live-transcript');
@@ -176,7 +177,8 @@ async function openVoicePopup() {
     if (!voicePopup || !overlay) return;
     voicePopup.classList.remove('hidden');
     overlay.classList.remove('hidden');
-    liveTranscriptEl.textContent = 'মাইক্রোফোন চালু হচ্ছে...';
+    voiceTranscriptReady = false;
+    liveTranscriptEl.textContent = t('voice.startingMic');
     voiceSendBtn.classList.add('hidden');
 
     try {
@@ -189,7 +191,7 @@ async function openVoicePopup() {
         };
 
         mediaRecorder.onstop = async () => {
-            liveTranscriptEl.textContent   = 'প্রতিলিপি (Transcribe) করা হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন';
+            liveTranscriptEl.textContent   = t('voice.transcribingWait');
             liveTranscriptEl.style.opacity = '0.7';
             voiceMicActive.classList.remove('listening');
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
@@ -199,13 +201,13 @@ async function openVoicePopup() {
 
         mediaRecorder.start();
         isRecording = true;
-        liveTranscriptEl.textContent   = 'শুনছি...';
+        liveTranscriptEl.textContent   = t('voice.listening');
         liveTranscriptEl.style.opacity = '0.5';
         voiceMicActive.classList.add('listening');
 
     } catch (err) {
         console.error("Error accessing mic:", err);
-        liveTranscriptEl.textContent = 'মাইক্রোফোন ব্যবহারের অনুমতি দেওয়া হয়নি।';
+        liveTranscriptEl.textContent = t('voice.micDenied');
         voiceMicActive.classList.remove('listening');
     }
 }
@@ -239,21 +241,21 @@ async function processAudioWithGoogleSTT(audioBlob) {
         finishTranscribeProgress();
 
         if (data.text) {
-            liveTranscriptEl.textContent   = data.text;
+            liveTranscriptEl.textContent   = data.text; voiceTranscriptReady = true;
             liveTranscriptEl.style.opacity = '1';
             voiceSendBtn.classList.remove('hidden');
         } else {
-            liveTranscriptEl.textContent = 'আপনার কথা পরিষ্কারভাবে শোনা যায়নি। অনুগ্রহ করে আবার রেকর্ড করুন।';
+            liveTranscriptEl.textContent = t('voice.unclear');
         }
     } catch (err) {
         console.error(err);
         finishTranscribeProgress();
-        liveTranscriptEl.textContent = 'প্রতিলিপি করার সময় সার্ভারে ত্রুটি ঘটেছে।';
+        liveTranscriptEl.textContent = t('voice.transcribeError');
     }
 }
 
 function startTranscribeProgress() {
-    liveTranscriptEl.textContent   = 'প্রতিলিপি করা হচ্ছে...';
+    liveTranscriptEl.textContent   = t('voice.transcribing');
     liveTranscriptEl.style.opacity = '0.7';
 
     let bar = document.getElementById('transcribe-progress');
@@ -262,7 +264,7 @@ function startTranscribeProgress() {
         bar.id        = 'transcribe-progress';
         bar.innerHTML = `
             <div id="transcribe-progress-fill"></div>
-            <span id="transcribe-progress-label">প্রতিলিপি করা হচ্ছে...</span>`;
+            <span id="transcribe-progress-label">${t('voice.transcribing')}</span>`;
         liveTranscriptEl.insertAdjacentElement('afterend', bar);
     }
 
@@ -272,11 +274,11 @@ function startTranscribeProgress() {
     bar.style.display = 'block';
 
     const steps = [
-        { pct: 15, label: 'অডিও আপলোড করা হচ্ছে...',    delay: 300  },
-        { pct: 40, label: 'ভয়েস প্রসেস করা হচ্ছে...',  delay: 1200 },
-        { pct: 65, label: 'শব্দ সনাক্ত করা হচ্ছে...',  delay: 2200 },
-        { pct: 85, label: 'প্রায় শেষ...',        delay: 3500 },
-        { pct: 90, label: 'চূড়ান্ত করা হচ্ছে...',         delay: 5000 },
+        { pct: 15, label: t('voice.stepUpload'),    delay: 300  },
+        { pct: 40, label: t('voice.stepProcess'),  delay: 1200 },
+        { pct: 65, label: t('voice.stepDetect'),  delay: 2200 },
+        { pct: 85, label: t('voice.stepAlmost'),        delay: 3500 },
+        { pct: 90, label: t('voice.stepFinalize'),         delay: 5000 },
     ];
     steps.forEach(({ pct, label: text, delay }) => {
         setTimeout(() => {
@@ -294,7 +296,7 @@ function finishTranscribeProgress() {
     const label = document.getElementById('transcribe-progress-label');
     if (!fill) return;
     fill.style.width = '100%';
-    if (label) label.textContent = 'সম্পন্ন হয়েছে!';
+    if (label) label.textContent = t('voice.done');
     setTimeout(() => { if (bar) bar.style.display = 'none'; }, 600);
 }
 
@@ -313,7 +315,7 @@ function closeVoicePopup() {
 
 function sendVoiceMessage() {
     const textToSend = liveTranscriptEl.textContent.trim();
-    if (!textToSend || textToSend === 'শুনছি...' || textToSend.includes('প্রতিলিপি')) return;
+    if (!voiceTranscriptReady || !textToSend) return;
     closeVoicePopup();
     chatInput.value = textToSend;
     chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
@@ -328,7 +330,7 @@ async function handleLogin(e) {
     e.preventDefault();
     const fishermanId = document.getElementById('login-fisherman-id').value.trim();
     const password    = document.getElementById('login-password').value.trim();
-    if (!fishermanId || !password) { alert("অনুগ্রহ করে মৎস্যজীবী আইডি এবং পাসওয়ার্ড লিখুন"); return; }
+    if (!fishermanId || !password) { alert(t('login.missingFields')); return; }
 
     try {
         const res = await fetch(`${BACKEND_URL}/login`, {
@@ -338,18 +340,18 @@ async function handleLogin(e) {
         });
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || "ভুল তথ্য দেওয়া হয়েছে");
+            throw new Error(err.detail || t('login.invalidCredentials'));
         }
         const user = await res.json();
         currentFishermanId = user.fishermanId;
         localStorage.setItem('currentUser', JSON.stringify(user));
-        if (userNameDisplay) userNameDisplay.textContent = user.name || "মৎস্যজীবী";
+        if (userNameDisplay) userNameDisplay.textContent = user.name || t('user.defaultName');
         showChatInterface();
         await loadUserChats();
         startNewChatUI();
-        appendSystemMessage("আপনাকে পুনরায় স্বাগতম!");
+        appendSystemMessage(t('login.welcomeBack'));
     } catch (err) {
-        alert("প্রবেশ করতে ব্যর্থ হয়েছে: " + err.message);
+        alert(t('login.failedPrefix') + err.message);
     }
 }
 
@@ -362,12 +364,12 @@ async function handleSignup(e) {
     const password        = document.getElementById('signup-password').value.trim();
     const confirmPassword = document.getElementById('signup-confirm-password').value.trim();
 
-    if (!country) { alert("অনুগ্রহ করে একটি দেশ নির্বাচন করুন"); return; }
-    if (password.length < 8) { alert("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে"); return; }
-    if (password !== confirmPassword) { alert("পাসওয়ার্ড মিলছে না!"); return; }
+    if (!country) { alert(t('signup.selectCountry')); return; }
+    if (password.length < 8) { alert(t('signup.passwordTooShort')); return; }
+    if (password !== confirmPassword) { alert(t('signup.passwordMismatch')); return; }
 
     const idRegex = /^[a-zA-Z0-9]+$/;
-    if (!idRegex.test(fishermanId)) { alert("মৎস্যজীবী আইডিতে শুধুমাত্র ইংরেজি অক্ষর এবং সংখ্যা থাকতে হবে"); return; }
+    if (!idRegex.test(fishermanId)) { alert(t('signup.idInvalidChars')); return; }
 
     try {
         const res = await fetch(`${BACKEND_URL}/signup`, {
@@ -377,13 +379,13 @@ async function handleSignup(e) {
         });
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || "নিবন্ধন ব্যর্থ হয়েছে");
+            throw new Error(err.detail || t('signup.failedGeneric'));
         }
-        alert("অ্যাকাউন্ট জমা দেওয়া হয়েছে! প্রবেশ করার আগে অনুগ্রহ করে অ্যাডমিনের অনুমোদনের জন্য অপেক্ষা করুন।");
+        alert(t('signup.success'));
         showLogin();
         signupForm.reset();
     } catch (err) {
-        alert("নিবন্ধন করতে ব্যর্থ হয়েছে: " + err.message);
+        alert(t('signup.failedPrefix') + err.message);
     }
 }
 
@@ -449,7 +451,7 @@ function renderChatHistory(chats) {
         const pinIcon = chat.pinned ? '\u{1F4CC}' : '';
         item.innerHTML = `
         <i class="fas fa-comment"></i>
-        <div class="chat-item-title">${pinIcon}${chat.title || 'নতুন চ্যাট'}</div>
+        <div class="chat-item-title">${pinIcon}${chat.title || t('sidebar.newChat')}</div>
         <button class="menu-dots" onclick="event.stopPropagation(); showChatMenu(this.parentElement, '${chat.chat_id}', ${chat.pinned || false})">⋮</button>`;
 
         item.addEventListener('click', () => loadChat(chat.chat_id));
@@ -476,8 +478,8 @@ async function loadChat(chatId) {
             const welcomeDiv = document.createElement('div');
             welcomeDiv.classList.add('welcome-message');
             welcomeDiv.innerHTML = `
-<h1>আজ আমি আপনাকে কীভাবে সাহায্য করতে পারি?</h1>
-<p>কথোপকথন শুরু করতে আপনার প্রথম মেসেজটি পাঠান...</p>`;
+<h1 data-i18n="chat.welcomeSubtitle">${t('chat.welcomeSubtitle')}</h1>
+<p data-i18n="chat.welcomeReturnSubtitle">${t('chat.welcomeReturnSubtitle')}</p>`;
             chatMessages.appendChild(welcomeDiv);
         } else {
             chat.messages.forEach(msg => addMessage(msg.content, msg.sender));
@@ -516,8 +518,8 @@ function startNewChatUI() {
     const welcomeDiv       = document.createElement('div');
     welcomeDiv.classList.add('welcome-message');
     welcomeDiv.innerHTML   = `
-<h1>আজ আমি আপনাকে কীভাবে সাহায্য করতে পারি?</h1>
-<p>কথোপকথন শুরু করতে আপনার প্রথম মেসেজটি পাঠান...</p>`;
+<h1 data-i18n="chat.welcomeSubtitle">${t('chat.welcomeSubtitle')}</h1>
+<p data-i18n="chat.welcomeReturnSubtitle">${t('chat.welcomeReturnSubtitle')}</p>`;
     chatMessages.appendChild(welcomeDiv);
     document.querySelectorAll('.chat-item').forEach(item => item.classList.remove('active'));
 }
@@ -531,7 +533,7 @@ async function deleteChat(chatId) {
             headers: authHeaders()
         });
         if (!res.ok) {
-            if (res.status === 404) { alert("চ্যাটটি পাওয়া যায়নি।"); return; }
+            if (res.status === 404) { alert(t('chat.notFound')); return; }
             if (res.status === 401 || res.status === 403) { logout(); return; }
             throw new Error(`HTTP ${res.status}`);
         }
@@ -541,14 +543,14 @@ async function deleteChat(chatId) {
             const welcomeDiv       = document.createElement('div');
             welcomeDiv.classList.add('welcome-message');
             welcomeDiv.innerHTML   = `
-<h1>আজ আমি আপনাকে কীভাবে সাহায্য করতে পারি?</h1>
-<p>কথোপকথন শুরু করতে আপনার প্রথম মেসেজটি পাঠান...</p>`;
+<h1 data-i18n="chat.welcomeSubtitle">${t('chat.welcomeSubtitle')}</h1>
+<p data-i18n="chat.welcomeReturnSubtitle">${t('chat.welcomeReturnSubtitle')}</p>`;
             chatMessages.appendChild(welcomeDiv);
         }
         await loadUserChats();
     } catch (e) {
         console.error("Failed to delete chat:", e);
-        alert("চ্যাটটি মুছে ফেলা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।");
+        alert(t('chat.deleteFailed'));
     }
 }
 
@@ -561,10 +563,10 @@ function showChatMenu(chatItem, chatId, isPinned) {
     const menu     = document.createElement('div');
     menu.className = 'chat-dropdown show';
     menu.innerHTML = `
-        <button class="menu-rename"><i class="fas fa-pencil-alt"></i> নাম পরিবর্তন</button>
-        <button class="menu-pin"><i class="fas fa-thumbtack"></i> ${isPinned ? 'আনপিন করুন' : 'পিন করুন'}</button>
-        <button class="menu-share"><i class="fas fa-share-alt"></i> শেয়ার করুন</button>
-        <button class="menu-delete"><i class="fas fa-trash"></i> মুছে ফেলুন</button>`;
+        <button class="menu-rename"><i class="fas fa-pencil-alt"></i> ${t('menu.rename')}</button>
+        <button class="menu-pin"><i class="fas fa-thumbtack"></i> ${isPinned ? t('menu.unpin') : t('menu.pin')}</button>
+        <button class="menu-share"><i class="fas fa-share-alt"></i> ${t('menu.share')}</button>
+        <button class="menu-delete"><i class="fas fa-trash"></i> ${t('menu.delete')}</button>`;
 
     chatItem.appendChild(menu);
     chatItem.classList.add('menu-open');
@@ -573,7 +575,7 @@ function showChatMenu(chatItem, chatId, isPinned) {
     menu.querySelector('.menu-rename').addEventListener('click', (e) => { e.stopImmediatePropagation(); cleanupMenu(); renameChat(chatId); });
     menu.querySelector('.menu-pin').addEventListener('click',    (e) => { e.stopImmediatePropagation(); cleanupMenu(); togglePin(chatId, !isPinned); });
     menu.querySelector('.menu-share').addEventListener('click',  (e) => { e.stopImmediatePropagation(); cleanupMenu(); shareChat(chatId); });
-    menu.querySelector('.menu-delete').addEventListener('click', (e) => { e.stopImmediatePropagation(); cleanupMenu(); if (confirm('আপনি কি এই চ্যাটটি স্থায়ীভাবে মুছে ফেলতে চান?')) deleteChat(chatId); });
+    menu.querySelector('.menu-delete').addEventListener('click', (e) => { e.stopImmediatePropagation(); cleanupMenu(); if (confirm(t('menu.confirmDelete'))) deleteChat(chatId); });
 
     const closeHandler = (e) => { if (!chatItem.contains(e.target)) cleanupMenu(); };
     setTimeout(() => document.addEventListener('click', closeHandler), 10);
@@ -593,13 +595,13 @@ async function togglePin(chatId, newPinnedState) {
             headers: authHeaders({ 'Content-Type': 'application/json' }),
             body:    JSON.stringify({ pinned: newPinnedState })
         });
-        if (res.ok) { await loadUserChats(); } else { alert("পিন স্ট্যাটাস পরিবর্তন করা সম্ভব হয়নি।"); }
-    } catch (e) { console.error(e); alert("পিন স্ট্যাটাস পরিবর্তন করা সম্ভব হয়নি।"); }
+        if (res.ok) { await loadUserChats(); } else { alert(t('pin.failed')); }
+    } catch (e) { console.error(e); alert(t('pin.failed')); }
 }
 
 // ==================== RENAME CHAT ====================
 async function renameChat(chatId) {
-    const newTitle = prompt("এই চ্যাটের জন্য একটি নতুন নাম লিখুন:", "");
+    const newTitle = prompt(t('rename.prompt'), "");
     if (!newTitle || newTitle.trim() === "") return;
     try {
         const res = await fetch(`${BACKEND_URL}/chats/${chatId}/title`, {
@@ -607,8 +609,8 @@ async function renameChat(chatId) {
             headers: authHeaders({ 'Content-Type': 'application/json' }),
             body:    JSON.stringify({ title: newTitle.trim() })
         });
-        if (res.ok) { await loadUserChats(); } else { alert("চ্যাটের নাম পরিবর্তন করা যায়নি।"); }
-    } catch (e) { console.error(e); alert("চ্যাটের নাম পরিবর্তন করা যায়নি।"); }
+        if (res.ok) { await loadUserChats(); } else { alert(t('rename.failed')); }
+    } catch (e) { console.error(e); alert(t('rename.failed')); }
 }
 
 // ==================== SHARE CHAT ====================
@@ -620,20 +622,20 @@ async function shareChat(chatId) {
         if (!res.ok) throw new Error("Failed to load chat");
         const chat = await res.json();
 
-        let shareText = ` ${chat.title || 'মৎস্যজীবী চ্যাটবট কথোপকথন'}\n\n`;
+        let shareText = ` ${chat.title || t('share.defaultTitle')}\n\n`;
         if (chat.messages && chat.messages.length > 0) {
             chat.messages.forEach(msg => {
-                const sender = msg.sender === 'user' ? 'আপনি' : 'মৎস্যজীবী চ্যাটবট';
+                const sender = msg.sender === 'user' ? t('share.you') : t('appTitle');
                 shareText   += `${sender}: ${msg.content}\n\n`;
             });
         }
-        shareText += `\n মৎস্যজীবী চ্যাটবট থেকে শেয়ার করা হয়েছে`;
+        shareText += `\n ${t('share.sharedFooter')}`;
 
         const encodedText = encodeURIComponent(shareText);
         const modal       = document.createElement('div');
         modal.className   = 'share-modal';
         modal.innerHTML   = `
-            <h3>চ্যাট শেয়ার করুন</h3>
+            <h3>${t('share.modalTitle')}</h3>
             <div class="share-options">
                 <a href="https://wa.me/?text=${encodedText}" target="_blank" class="share-btn">
                     <img src="https://cdn.simpleicons.org/whatsapp/25D366" alt="WhatsApp" width="56" height="56">
@@ -649,10 +651,10 @@ async function shareChat(chatId) {
                 </a>
             </div>
             <div class="copy-option">
-                <button id="share-copy-btn"><i class="fas fa-copy"></i> লেখা কপি করুন</button>
+            <button id="share-copy-btn"><i class="fas fa-copy"></i> ${t('share.copyText')}</button>
             </div>
             <div style="text-align:center; margin-top:12px;">
-                <button class="btn-secondary" style="font-size:13px; padding:6px 16px;" id="share-close-btn">বন্ধ করুন</button>
+            <button class="btn-secondary" style="font-size:13px; padding:6px 16px;" id="share-close-btn">${t('common.close')}</button>
             </div>`;
 
         document.body.appendChild(modal);
@@ -660,8 +662,8 @@ async function shareChat(chatId) {
 
         modal.querySelector('#share-copy-btn').addEventListener('click', () => {
             navigator.clipboard.writeText(shareText)
-                .then(() => alert('ক্লিপবোর্ডে কপি করা হয়েছে!'))
-                .catch(() => alert('কপি করা যায়নি। অনুগ্রহ করে নিজে সিলেক্ট করে কপি করুন।'));
+                .then(() => alert(t('share.copiedSuccess')))
+                .catch(() => alert(t('share.copyFailed')));
         });
         modal.querySelector('#share-close-btn').addEventListener('click', () => {
             modal.remove();
@@ -669,7 +671,7 @@ async function shareChat(chatId) {
         });
     } catch (e) {
         console.error("Share failed:", e);
-        alert("চ্যাটটি শেয়ার করা সম্ভব হয়নি।");
+        alert(t('share.shareFailed'));
     }
 }
 
@@ -681,7 +683,7 @@ async function handleChatSubmit(e) {
 
     if (!currentChatId) {
         await createNewChat();
-        if (!currentChatId) { alert("নতুন চ্যাট তৈরি করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।"); return; }
+        if (!currentChatId) { alert(t('chat.createFailed')); return; }
     }
 
     addMessage(message, 'user');
@@ -693,7 +695,7 @@ async function handleChatSubmit(e) {
 async function sendMessageToBackend(message) {
     if (!currentFishermanId || !currentChatId) {
         removeTypingIndicator();
-        addMessage("অনুগ্রহ করে প্রথমে প্রবেশ (Login) করুন এবং একটি নতুন চ্যাট তৈরি করুন।", 'bot');
+        addMessage(t('chat.notLoggedIn'), 'bot');
         return;
     }
 
@@ -718,7 +720,7 @@ async function sendMessageToBackend(message) {
     } catch (err) {
         removeTypingIndicator();
         console.error("Chat request failed:", err);
-        addMessage("চ্যাটবট সার্ভারের সাথে যোগাযোগ করা যাচ্ছে না। অনুগ্রহ করে নিশ্চিত করুন যে ব্যাকএন্ড চালু আছে।", 'bot');
+        addMessage(t('chat.serverUnreachable'), 'bot');
     }
 }
 
@@ -762,7 +764,7 @@ function addMessage(content, sender, lang) {
         const readAloudBtn = document.createElement('button');
         readAloudBtn.classList.add('feedback-btn', 'read-aloud-btn');
         readAloudBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
-        readAloudBtn.title     = 'শুনুন';
+        readAloudBtn.title     = t('readAloud.listen');
         readAloudBtn.addEventListener('click', () => speakMessage(content, readAloudBtn, lang));
 
         feedbackDiv.appendChild(thumbsUpBtn);
@@ -832,7 +834,7 @@ async function handleFeedbackSubmit(e) {
     const userQuestion    = feedbackPopup.dataset.userQuestion || '';
     await sendFeedbackToBackend({ type: "negative", reason, comments, message: reportedMessage, userQuestion });
     closeFeedbackPopup();
-    alert('আপনার মূল্যবান মতামতের জন্য ধন্যবাদ!');
+    alert(t('feedback.thanks'));
 }
 
 function closeFeedbackPopup() {
@@ -913,6 +915,7 @@ window.toggleProfileMenu        = toggleProfileMenu;
 let contribMediaRecorder = null;
 let contribAudioChunks = [];
 let contribIsRecording = false;
+let contribTranscriptReady = false;
 
 function openContributePopup() {
   const popup = document.getElementById('contribute-popup');
@@ -968,7 +971,7 @@ function clearContribFields() {
     if (el) el.value = '';
   });
   const transcript = document.getElementById('contrib-live-transcript');
-  if (transcript) { transcript.textContent = 'শুরু করতে মাইক চাপুন...'; transcript.style.opacity = '0.5'; }
+  if (transcript) { transcript.textContent = t('contribute.pressMicToStart'); transcript.style.opacity = '0.5'; contribTranscriptReady = false; }
   document.getElementById('contrib-use-transcript-btn')?.classList.add('hidden');
 }
 
@@ -988,7 +991,7 @@ async function startContribMic() {
     contribMediaRecorder = new MediaRecorder(stream);
     contribMediaRecorder.ondataavailable = e => { if (e.data.size > 0) contribAudioChunks.push(e.data); };
     contribMediaRecorder.onstop = async () => {
-      transcript.textContent = 'প্রতিলিপি করা হচ্ছে...';
+      transcript.textContent = t('contribute.transcribing');
       transcript.style.opacity = '0.7';
       micBtn.classList.remove('listening');
       const blob = new Blob(contribAudioChunks, { type: 'audio/webm' });
@@ -997,13 +1000,13 @@ async function startContribMic() {
     };
     contribMediaRecorder.start();
     contribIsRecording = true;
-    transcript.textContent = 'শুনছি...';
+    transcript.textContent = t('voice.listening'); contribTranscriptReady = false;
     transcript.style.opacity = '0.5';
     micBtn.classList.add('listening');
     micBtn.setAttribute('aria-label', 'Stop recording');
   } catch (err) {
     console.error('Contrib mic error:', err);
-    transcript.textContent = 'মাইক্রোফোন ব্যবহারের অনুমতি দেওয়া হয়নি।';
+    transcript.textContent = t('voice.micDenied');
   }
 }
 
@@ -1031,21 +1034,21 @@ async function transcribeContribAudio(audioBlob) {
     if (!res.ok) throw new Error('Transcription failed');
     const data = await res.json();
     if (data.text) {
-      transcript.textContent = data.text;
+      transcript.textContent = data.text; contribTranscriptReady = true;
       transcript.style.opacity = '1';
       useBtn.classList.remove('hidden');
     } else {
-      transcript.textContent = 'আপনার কথা পরিষ্কারভাবে শোনা যায়নি। অনুগ্রহ করে আবার রেকর্ড করুন।';
+      transcript.textContent = t('voice.unclear');
     }
   } catch (err) {
     console.error(err);
-    transcript.textContent = 'Server error during transcription.';
+    transcript.textContent = t('voice.transcribeError');
   }
 }
 
 function useContribTranscript() {
   const text = document.getElementById('contrib-live-transcript').textContent.trim();
-  if (!text || text.includes('শুনছি') || text.includes('প্রতিলিপি') || text.includes('মাইক চাপুন')) return;
+  if (!contribTranscriptReady || !text) return;
   const ctxEl = document.getElementById('contrib-context');
   if (ctxEl) ctxEl.value = text;
   switchContributeTab('text');
@@ -1065,12 +1068,12 @@ async function submitContribution() {
   if (!subject || !relation || !object_) {
     statusMsg.style.display  = 'block';
     statusMsg.style.color    = 'var(--danger-color)';
-    statusMsg.textContent    = 'অনুগ্রহ করে বিষয় (Subject), সম্পর্ক (Relationship) এবং অবজেক্ট (Object) পূরণ করুন।';
+    statusMsg.textContent    = t('contribute.missingFields');
     return;
   }
 
   submitBtn.disabled  = true;
-  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> জমা দেওয়া হচ্ছে...';
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + t('contribute.submitting');
   statusMsg.style.display = 'none';
 
   try {
@@ -1082,12 +1085,12 @@ async function submitContribution() {
     const data = await res.json();
     if (res.ok) {
       statusMsg.style.color   = 'var(--secondary-color)';
-      statusMsg.textContent   = '\u2705' + (data.message ? 'পর্যালোচনার জন্য জমা দেওয়া হয়েছে!' : 'পর্যালোচনার জন্য জমা দেওয়া হয়েছে!');
+      statusMsg.textContent   = '\u2705' + t('contribute.successMsg');
       statusMsg.style.display = 'block';
       clearContribFields();
       setTimeout(closeContributePopup, 2500);
     } else {
-      throw new Error(data.detail || 'জমা দেওয়া সম্ভব হয়নি');
+      throw new Error(data.detail || t('contribute.failedGeneric'));
     }
   } catch (err) {
     statusMsg.style.color   = 'var(--danger-color)';
@@ -1095,7 +1098,7 @@ async function submitContribution() {
     statusMsg.style.display = 'block';
   } finally {
     submitBtn.disabled  = false;
-    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> জমা দিন';
+    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> ' + t('contribute.submit');
   }
 }
 window.submitContribution = submitContribution;
