@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>মৎস্যজীবী চ্যাটবট</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+    <div class="container" id="login-container">
+        <div class="form-container">
+            <div class="logo">
+                <img src="assets/fishermen-logo.svg" alt="মৎস্যজীবী চ্যাটবট লোগো">
+                <h1>মৎস্যজীবী চ্যাটবট</h1>
+            </div>
+            <h2>প্রবেশ করুন</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-fisherman-id">মৎস্যজীবী আইডি</label>
+                    <input type="text" id="login-fisherman-id" placeholder="আপনার মৎস্যজীবী আইডি লিখুন" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">পাসওয়ার্ড</label>
+                    <input type="password" id="login-password" placeholder="আপনার পাসওয়ার্ড লিখুন" required>
+                    <span class="toggle-password" onclick="togglePasswordVisibility('login-password')">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                <button type="submit" class="btn-primary">প্রবেশ করুন</button>
+            </form>
+            <p class="form-footer">অ্যাকাউন্ট নেই? <a href="#" onclick="showSignup()">নতুন অ্যাকাউন্ট তৈরি করুন</a></p>
+        </div>
+    </div>
+
+    <div class="container hidden" id="signup-container">
+        <div class="form-container">
+            <div class="logo">
+                <img src="assets/fishermen-logo.svg" alt="মৎস্যজীবী চ্যাটবট লোগো">
+                <h1>মৎস্যজীবী চ্যাটবট</h1>
+            </div>
+            <h2>নতুন অ্যাকাউন্ট তৈরি করুন</h2>
+            <form id="signup-form">
+                <div class="form-group">
+                    <label for="signup-name">নাম</label>
+                    <input type="text" id="signup-name" placeholder="আপনার নাম লিখুন" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-fisherman-id">মৎস্যজীবী আইডি</label>
+                    <input type="text" id="signup-fisherman-id" placeholder="আপনার মৎস্যজীবী আইডি লিখুন" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-country">দেশ</label>
+                    <select id="signup-country" required>
+                        <option value="">দেশ নির্বাচন করুন</option>
+                        <option value="Australia">অস্ট্রেলিয়া</option>
+                        <option value="Malaysia">মালয়েশিয়া</option>
+                        <option value="India">ভারত</option>
+                        <option value="Bangladesh">বাংলাদেশ</option>
+                        <option value="USA">যুক্তরাষ্ট্র</option>
+                        <option value="UK">যুক্তরাজ্য</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="signup-location">অবস্থান</label>
+                    <input type="text" id="signup-location" placeholder="আপনার বর্তমান অবস্থান লিখুন" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">পাসওয়ার্ড</label>
+                    <input type="password" id="signup-password" placeholder="আপনার পাসওয়ার্ড লিখুন" minlength="8" required>
+                    <span class="toggle-password" onclick="togglePasswordVisibility('signup-password')">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="signup-confirm-password">পাসওয়ার্ড নিশ্চিত করুন</label>
+                    <input type="password" id="signup-confirm-password" placeholder="পাসওয়ার্ড পুনরায় লিখুন" minlength="8" required>
+                    <span class="toggle-password" onclick="togglePasswordVisibility('signup-confirm-password')">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                <button type="submit" class="btn-primary">নিবন্ধন করুন</button>
+            </form>
+            <p class="form-footer">ইতোমধ্যে অ্যাকাউন্ট আছে? <a href="#" onclick="showLogin()">প্রবেশ করুন</a></p>
+        </div>
+    </div>
+
+    <button id="sidebar-toggle" class="sidebar-toggle" title="সাইডবার টগল করুন">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="chat-container hidden" id="chat-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="assets/fishermen-logo.svg" alt="মৎস্যজীবী চ্যাটবট লোগো">
+                    <h2>মৎস্যজীবী চ্যাটবট</h2>
+                </div>
+                <button class="new-chat-btn" id="new-chat-btn">
+                    <i class="fas fa-plus"></i> নতুন চ্যাট
+                </button>
+            </div>
+            <div class="search-container">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="চ্যাট খুঁজুন" id="search-chats">
+                </div>
+            </div>
+            <div class="chat-history" id="chat-history"></div>
+            <div class="user-info">
+                <div class="user-avatar" id="profile-btn" title="প্রোফাইল অপশন" onclick="toggleProfileMenu()">
+                       <i class="fas fa-user"></i>
+                </div>
+               <div class="user-name" id="user-name-display">ব্যবহারকারীর নাম</div>
+                      <button class="logout-btn" onclick="logout()" title="লগআউট">
+                        <i class="fas fa-sign-out-alt"></i>
+                     </button>
+
+                     <div class="profile-dropdown hidden" id="profile-dropdown">
+                             <button id="dark-toggle" class="profile-menu-item" title="থিম পরিবর্তন করুন">
+                              <i class="fas fa-lightbulb"></i>
+                                <span>থিম পরিবর্তন করুন</span>
+                                    </button>
+                              <button class="profile-menu-item" id="export-chat" title="চ্যাট এক্সপোর্ট করুন">
+                                 <i class="fas fa-download"></i>
+                                    <span>চ্যাট এক্সপোর্ট করুন</span>
+                               </button>
+                         <button class="profile-menu-item" id="contribute-btn" title="নলেজ গ্রাফে অবদান রাখুন" onclick="openContributePopup(); toggleProfileMenu()">
+                                 <i class="fas fa-brain"></i>
+                                <span>নতুন তথ্য যোগ করুন</span>
+                                   </button>
+                       </div>
+               </div>
+        </div>
+
+        <div class="main-chat">
+            <div class="chat-messages" id="chat-messages">
+                <div class="welcome-message">
+                    <h1>মৎস্যজীবী চ্যাটবটে স্বাগতম</h1>
+                    <p>আজ আমি আপনাকে কীভাবে সাহায্য করতে পারি?</p>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <form id="chat-form">
+                    <div class="chat-input-box">
+                        <textarea id="chat-input" placeholder="আপনার মেসেজ এখানে লিখুন..." rows="1"></textarea>
+                        <button type="button" id="voice-btn" class="voice-btn" title="ভয়েস ইনপুট">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <button type="submit" class="send-btn" title="পাঠান">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                        
+                    </div>
+                </form>
+                <p class="disclaimer">এই চ্যাটবটটি প্রাপ্ত তথ্যের ভিত্তিতে নির্দেশনা প্রদান করে এবং এটি সর্বদা নির্ভুল বা সর্বশেষ তথ্য নাও হতে পারে। শুধুমাত্র এই তথ্যের উপর নির্ভর করবেন না। গুরুত্বপূর্ণ সিদ্ধান্তের জন্য প্রয়োজনে স্থানীয় কর্তৃপক্ষ বা অভিজ্ঞ জেলেদের পরামর্শ নিন।</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="feedback-popup hidden" id="feedback-popup">
+        <div class="feedback-content">
+            <h3>এই উত্তরে কী সমস্যা ছিল?</h3>
+            <form id="feedback-form">
+                <div class="feedback-options">
+                    <label class="feedback-option">
+                        <input type="radio" name="feedback" value="incorrect">
+                        <span>ভুল তথ্য</span>
+                    </label>
+                    <label class="feedback-option">
+                        <input type="radio" name="feedback" value="harmful">
+                        <span>ক্ষতিকারক বা অনিরাপদ বিষয়বস্তু</span>
+                    </label>
+                    <label class="feedback-option">
+                        <input type="radio" name="feedback" value="not-helpful">
+                        <span>উপকারী নয়</span>
+                    </label>
+                    <label class="feedback-option">
+                        <input type="radio" name="feedback" value="other">
+                        <span>অন্যান্য</span>
+                    </label>
+                </div>
+                <textarea id="feedback-text" placeholder="অতিরিক্ত মন্তব্য (ঐচ্ছিক)"></textarea>
+                <div class="feedback-buttons">
+                    <button type="button" class="btn-secondary" onclick="closeFeedbackPopup()">বাতিল করুন</button>
+                    <button type="submit" class="btn-primary">জমা দিন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="voice-popup hidden" id="voice-popup">
+        <div class="voice-content">
+            <div class="voice-header" style="justify-content: flex-end;">
+                <button id="voice-close-btn" class="icon-btn" title="বাতিল করুন" onclick="closeVoicePopup()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="voice-body">
+                <p id="live-transcript" class="live-transcript">এখন কথা বলুন...</p>
+            </div>
+            <div class="voice-footer">
+                <button id="voice-mic-active" class="pulsing-mic" onclick="stopListening()" title="রেকর্ডিং বন্ধ করুন">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button id="voice-send-btn" class="btn-primary send-btn hidden" onclick="sendVoiceMessage()">
+                    <i class="fas fa-paper-plane"></i> পাঠান
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay hidden" id="overlay"></div>
+
+    <script>
+    function validateSignup() {
+        const fishermanId     = document.getElementById('signup-fisherman-id').value;
+        const password        = document.getElementById('signup-password').value;
+        const confirmPassword = document.getElementById('signup-confirm-password').value;
+        const country         = document.getElementById('signup-country').value;
+
+        if (!country) {
+            alert("অনুগ্রহ করে একটি দেশ নির্বাচন করুন");
+            return false;
+        }
+
+        const idRegex = /^[a-zA-Z0-9]+$/;
+        if (!idRegex.test(fishermanId)) {
+            alert("মৎস্যজীবী আইডিতে শুধুমাত্র ইংরেজি অক্ষর এবং সংখ্যা থাকতে হবে");
+            return false;
+        }
+
+        if (password.length < 8) {
+            alert("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে");
+            return false;
+        }
+
+        if (password !== confirmPassword) {
+            alert("পাসওয়ার্ড মিলছে না");
+            return false;
+        }
+
+        return true;
+    }
+    </script>
+
+    <script src="js/script.js" defer></script>
+    <div id="contribute-popup" class="feedback-popup hidden" role="dialog" aria-modal="true" aria-labelledby="contribute-title">
+  <div class="voice-content contribute-content">
+    <div class="voice-header">
+      <h3 id="contribute-title">
+        <i class="fas fa-brain" style="color:#3a7acd;margin-right:8px;"></i>
+        তথ্যভাণ্ডারে নতুন তথ্য যোগ করুন
+      </h3>
+      <button class="icon-btn" onclick="closeContributePopup()" aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+      একজন মৎস্যজীবী হিসেবে আপনার জানা একটি তথ্য শেয়ার করুন। নিচে টাইপ করুন বা মাইক ব্যবহার করুন। 
+      আপনার দেওয়া তথ্য যোগ করার আগে যাচাই করা হবে।
+    </p>
+
+    <div class="contribute-tabs" role="tablist">
+      <button class="contribute-tab active" id="tab-text" role="tab"
+              aria-selected="true" onclick="switchContributeTab('text')">
+        <i class="fas fa-keyboard"></i> টাইপ করুন
+      </button>
+      <button class="contribute-tab" id="tab-voice" role="tab"
+              aria-selected="false" onclick="switchContributeTab('voice')">
+        <i class="fas fa-microphone"></i> কথা বলুন
+      </button>
+    </div>
+
+    <div id="contrib-text-panel">
+      <div class="form-group" style="margin-top:12px;">
+        <label for="contrib-subject">বিষয় (Subject) <span style="color:var(--danger-color)">*</span></label>
+        <input type="text" id="contrib-subject" placeholder="যেমন: Hilsa, Shrimp, Cast Net" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="contrib-relation">সম্পর্ক (Relationship)<span style="color:var(--danger-color)">*</span></label>
+        <input type="text" id="contrib-relation" placeholder="যেমন: FOUND_IN, NEEDS, BEST_IN" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="contrib-object">অবজেক্ট (Object) <span style="color:var(--danger-color)">*</span></label>
+        <input type="text" id="contrib-object" placeholder="যেমন: Padma River, Winter, Monsoon, June" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="contrib-context">
+          অতিরিক্ত তথ্য
+          <span style="color:var(--text-secondary);font-weight:400">(ঐচ্ছিক)</span>
+        </label>
+        <textarea id="contrib-context" rows="2"
+          placeholder="যেমন: বর্ষাকালে পদ্মা নদীতে ইলিশ সবচেয়ে বেশি পাওয়া যায়।"></textarea>
+      </div>
+    </div>
+
+    <div id="contrib-voice-panel" class="hidden">
+      <p style="font-size:13px;color:var(--text-secondary);margin:12px 0 8px;">
+        তথ্যটি বর্ণনা করে একটি পূর্ণ বাক্য বলুন। আমরা এটি প্রতিলিপি (transcribe) করে আপনার জন্য অতিরিক্ত তথ্যের ক্ষেত্রটি পূরণ করব।
+      </p>
+      <div class="voice-body" style="min-height:60px;">
+        <div id="contrib-live-transcript" class="live-transcript"
+             style="font-size:16px;opacity:0.5;">
+          শুরু করতে মাইক চাপুন...
+        </div>
+      </div>
+      <div class="voice-footer" style="margin-top:12px;">
+        <button id="contrib-mic-btn" class="pulsing-mic"
+                onclick="toggleContribMic()" aria-label="Start recording">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <button id="contrib-use-transcript-btn" class="btn-secondary hidden"
+                onclick="useContribTranscript()"
+                style="font-size:13px;padding:8px 16px;">
+          <i class="fas fa-check"></i> এই লেখাটি ব্যবহার করুন
+        </button>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn-secondary" onclick="closeContributePopup()"
+              style="font-size:14px;padding:9px 18px;">বাতিল করুন</button>
+      <button id="contrib-submit-btn" class="btn-primary" onclick="submitContribution()"
+              style="font-size:14px;padding:9px 18px;">
+        <i class="fas fa-paper-plane"></i> জমা দিন
+      </button>
+    </div>
+    <div id="contrib-status-msg"
+         style="margin-top:10px;font-size:13px;text-align:center;display:none;"></div>
+  </div>
+</div>
+</body>
+</html>

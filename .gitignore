@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+env/
+venv/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+#google cloud key
+key/
+
+# Data now lives in MongoDB Atlas (see server.py) — these local files are no
+# longer read or written by the app and are kept only as pre-migration history.
+users.json
+chats.json
+feedbacks.json
+contributions.json
+settings.json
+admin_config.json

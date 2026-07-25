@@ -1,0 +1,14 @@
+fastapi[standard]
+aiofiles
+uvicorn[standard]
+pydantic
+python-multipart
+neo4j
+pymongo[srv]
+deep-translator
+langdetect
+httpx
+ollama
+requests
+google-cloud-speech
+python-dotenv
