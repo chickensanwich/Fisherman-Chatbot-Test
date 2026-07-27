@@ -325,19 +325,20 @@ def translate(text: str, source: str, target: str) -> str:
 
 def extract_database_keywords_via_llm(user_message: str) -> list:
     try:
-        prompt = f"""You are an expert entity extraction AI for a specialized fishing Knowledge Graph.
-Your task is to extract ONLY the specific fishing entities explicitly mentioned in the user's message.
+        prompt = f"""You are an expert entity extraction AI for a fishing community Knowledge Graph.
+Your task is to extract ONLY the specific entities explicitly mentioned in the user's message.
 
 CRITICAL RULES:
-1. ONLY EXTRACT WHAT IS THERE: Extract exactly what the user asks about. Do NOT guess answers. If the user asks "What bait is used for Blackfish?", extract ONLY 'Blackfish'. 
-2. OPEN ENTITY EXTRACTION: You must extract ANY fish, gear, location, bait, weather, or activity mentioned by the user, EVEN IF it is not in the example list below. 
+1. ONLY EXTRACT WHAT IS THERE: Extract exactly what the user asks about. Do NOT guess answers. If the user asks "What bait is used for Blackfish?", extract ONLY 'Blackfish'.
+2. OPEN ENTITY EXTRACTION: You must extract ANY fish, gear, location, bait, weather, activity, social role, custom, ritual, rule, or belief mentioned by the user, EVEN IF it is not in the example list below.
    Here are EXAMPLES of known entities and how to categorize them (but do not restrict yourself ONLY to this list):
    - Fish Examples: Catla (কাতলা / Ikan Catla), Rohu (রুই / Ikan Rohu), Vetki (ভেটকি / barramundi / Kakap Putih), Hilsa (ইলিশ / Ikan Hilsa), Chingri (চিংড়ি / shrimp / Udang).
    - Water/Weather Examples: Clean Water (পরিষ্কার / Air Bersih), Murky Water (ঘোলা / Air Keruh), Stormy (Badai).
    - Gear & Bait Examples: Cast Net (Jala), Fishing Net (জাল / Jaring), Hook and Line (হুক / বর্শী / Kail dan Senar), Shrimp (চিংড়ির টোপ / Umpan Udang), Dough Bait (আটা / Umpan Adonan).
    - Location Examples: Chandpur (চাঁদপুর), Padma River (পদ্মা / Sungai Padma), Bay of Bengal (বঙ্গোপসাগর / Teluk Benggala).
    - Time/Activity Examples: September (সেপ্টেম্বর), Full Moon (পূর্ণিমা / Bulan Purnama), Night Fishing (রাতে / Memancing Malam).
-3. ALIAS RESOLUTION: Use the examples above to map common Bengali or Indonesian names to their English equivalents if they match. If a user mentions a completely new fish like 'Blackfish', 'ব্লাকফিশ', or 'Ikan Hitam', simply extract 'Blackfish'.
+   - Social/Cultural Examples (from Indonesian fishing communities): Patrons / Punggawa, Fishing Cooperative, Barzanji, Parappo, Apparuru (pre-departure rituals).
+3. ALIAS RESOLUTION: Use the examples above to map common Bengali or Indonesian names to their English equivalents if they match. If a user mentions a completely new fish like 'Blackfish', 'ব্লাকফিশ', or 'Ikan Hitam', simply extract 'Blackfish'. Keep social/cultural terms (e.g. 'Punggawa', 'Barzanji') as-is rather than translating them.
 4. FORMAT: Output ONLY a clean, comma-separated list of English keywords in Title Case. No explanations.
 
 Example 1:
@@ -427,41 +428,59 @@ def query_knowledge_graph(user_message: str) -> str:
             MATCH (n)
             WHERE any(kw IN $keywords WHERE toLower(toString(n.name)) =~ ('(?i).*' + toLower(kw) + '.*'))
             WITH n LIMIT 3
-            
+
             OPTIONAL MATCH path = (n)-[*1..2]-(m)
-            
-            // Score the path: Prioritize ending on High-Value answers
+
+            // Score the path: Prioritize ending on High-Value answers. Curated domain
+            // labels (FishSpecies, Bait, ...) score highest; generic KGNode entities
+            // (from document ingestion: Group, Belief, Rule, Ritual, ...) score neutral;
+            // Document/Chunk nodes (ingestion plumbing, not facts) score lowest.
             WITH path,
-                 CASE WHEN labels(m)[0] IN ['FishSpecies', 'Bait', 'Gear', 'Constraint', 'SafetySignal'] THEN 2 ELSE 1 END as relevance
+                 CASE
+                     WHEN labels(m)[0] IN ['Document', 'Chunk'] THEN 0
+                     WHEN labels(m)[0] IN ['FishSpecies', 'Bait', 'Gear', 'Constraint', 'SafetySignal'] THEN 2
+                     ELSE 1
+                 END as relevance
             ORDER BY relevance DESC
             LIMIT 35
-            
+
             UNWIND (CASE WHEN path IS NULL THEN [null] ELSE relationships(path) END) AS r
             WITH DISTINCT r
             WHERE r IS NOT NULL
-            RETURN 
-                CASE WHEN size(labels(startNode(r))) > 0 THEN labels(startNode(r))[0] ELSE 'Entity' END AS start_label,
+              AND NOT type(r) IN ['HAS_CHUNK', 'MENTIONS']
+              AND startNode(r).name IS NOT NULL
+              AND endNode(r).name IS NOT NULL
+            RETURN
+                CASE
+                    WHEN labels(startNode(r))[0] = 'KGNode' AND startNode(r).type IS NOT NULL THEN startNode(r).type
+                    WHEN size(labels(startNode(r))) > 0 THEN labels(startNode(r))[0]
+                    ELSE 'Entity'
+                END AS start_label,
                 startNode(r).name AS start_name,
                 type(r) AS r_type,
-                CASE WHEN size(labels(endNode(r))) > 0 THEN labels(endNode(r))[0] ELSE 'Entity' END AS end_label, 
+                CASE
+                    WHEN labels(endNode(r))[0] = 'KGNode' AND endNode(r).type IS NOT NULL THEN endNode(r).type
+                    WHEN size(labels(endNode(r))) > 0 THEN labels(endNode(r))[0]
+                    ELSE 'Entity'
+                END AS end_label,
                 endNode(r).name AS end_name
             """,
             keywords=keywords
         )
-        
+
         for record in result:
             start_label = record["start_label"]
             start_name = record["start_name"]
             end_label = record["end_label"]
             end_name = record["end_name"]
             clean_rel = record["r_type"].lower().replace("_", " ")
-            
-            
+
+
             entity_key = f"[{start_label}] '{start_name}'"
-            
+
             if entity_key not in grouped_facts:
                 grouped_facts[entity_key] = set()
-            
+
             grouped_facts[entity_key].add(f"[{clean_rel}] {end_label} '{end_name}'")
 
    
@@ -845,8 +864,14 @@ async def search_graph_nodes(q: str = "", _: None = Depends(require_admin)):
         keywords = [w for w in q.lower().split() if len(w) > 2] if q.strip() else [""]
         seen = set()
         for keyword in keywords[:5]:
+            # Only scan properties that are always scalar (both the curated fact-graph
+            # schema and the document-ingestion schema use these). Scanning every
+            # property via keys(n) would crash on list-typed properties like the
+            # ingestion schema's job_ids/filenames/chunk_ids, since Cypher's toString()
+            # doesn't accept lists.
             cypher = (
-                "MATCH (n) WHERE any(prop in keys(n) WHERE toLower(toString(n[prop])) CONTAINS $kw) "
+                "MATCH (n) WHERE any(prop in ['name', 'text', 'filename', 'uid'] "
+                "WHERE n[prop] IS NOT NULL AND toLower(toString(n[prop])) CONTAINS $kw) "
                 "OPTIONAL MATCH (n)-[r]->(m) "
                 "RETURN n, collect({relId: elementId(r), type: type(r), targetId: elementId(m), targetProps: properties(m)}) as rels "
                 "LIMIT 20"
