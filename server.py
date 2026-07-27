@@ -337,8 +337,8 @@ CRITICAL RULES:
    - Gear & Bait Examples: Cast Net (Jala), Fishing Net (জাল / Jaring), Hook and Line (হুক / বর্শী / Kail dan Senar), Shrimp (চিংড়ির টোপ / Umpan Udang), Dough Bait (আটা / Umpan Adonan).
    - Location Examples: Chandpur (চাঁদপুর), Padma River (পদ্মা / Sungai Padma), Bay of Bengal (বঙ্গোপসাগর / Teluk Benggala).
    - Time/Activity Examples: September (সেপ্টেম্বর), Full Moon (পূর্ণিমা / Bulan Purnama), Night Fishing (রাতে / Memancing Malam).
-   - Social/Cultural Examples (from Indonesian fishing communities): Patrons / Punggawa, Fishing Cooperative, Barzanji, Parappo, Apparuru (pre-departure rituals).
-3. ALIAS RESOLUTION: Use the examples above to map common Bengali or Indonesian names to their English equivalents if they match. If a user mentions a completely new fish like 'Blackfish', 'ব্লাকফিশ', or 'Ikan Hitam', simply extract 'Blackfish'. Keep social/cultural terms (e.g. 'Punggawa', 'Barzanji') as-is rather than translating them.
+   - Social/Cultural Examples (from Indonesian fishing communities): Patrons (Punggawa), Fishing Cooperative (Koperasi), Barzanji, Parappo, Apparuru (pre-departure rituals).
+3. ALIAS RESOLUTION: Use the examples above to map common Bengali or Indonesian names to their English equivalents if they match — this applies to social/cultural terms exactly the same as fish/gear terms. 'Punggawa' must be extracted as 'Patrons', 'Koperasi' as 'Fishing Cooperative', etc., since that is the name these entities are stored under. If a user mentions a completely new fish like 'Blackfish', 'ব্লাকফিশ', or 'Ikan Hitam', simply extract 'Blackfish'.
 4. FORMAT: Output ONLY a clean, comma-separated list of English keywords in Title Case. No explanations.
 
 Example 1:
@@ -405,18 +405,109 @@ Keywords:"""
             
     except Exception as e:
         print(f"[LLM KEYWORD EXTRACTION FAILED]: {e}")
-        
+
     return []
-    
+
+
+# ====================== DYNAMIC ENTITY RESOLUTION ======================
+# The knowledge graph is populated by a separate document-ingestion pipeline we
+# don't control. It names entities as verbatim phrases extracted from source
+# documents (in whatever language/wording the source used), so a static alias
+# list in the keyword-extraction prompt above can never keep up with new
+# documents. Instead, we fetch what's actually in the graph right now and ask
+# an LLM to match the user's message against those real names directly - this
+# keeps working as new entities are ingested, with no further code changes.
+_known_entity_names_cache = {"names": [], "fetched_at": 0.0}
+_KNOWN_ENTITY_NAMES_TTL_SECONDS = 300
+
+
+def get_known_entity_names() -> list:
+    now = datetime.now(timezone.utc).timestamp()
+    if _known_entity_names_cache["names"] and now - _known_entity_names_cache["fetched_at"] < _KNOWN_ENTITY_NAMES_TTL_SECONDS:
+        return _known_entity_names_cache["names"]
+
+    try:
+        with neo4j_driver.session() as session:
+            result = session.run(
+                """
+                MATCH (n)
+                WHERE n.name IS NOT NULL AND NOT labels(n)[0] IN ['Document', 'Chunk']
+                RETURN DISTINCT n.name AS name
+                LIMIT 500
+                """
+            )
+            names = [record["name"] for record in result]
+        _known_entity_names_cache["names"]      = names
+        _known_entity_names_cache["fetched_at"]  = now
+        return names
+    except Exception as e:
+        print(f"[FETCH KNOWN ENTITY NAMES FAILED]: {e}")
+        return _known_entity_names_cache["names"]
+
+
+def resolve_keywords_to_known_entities(user_message: str, raw_keywords: list, known_names: list) -> list:
+    if not known_names:
+        return []
+
+    try:
+        names_list = "\n".join(f"- {n}" for n in known_names)
+        prompt = f"""You are matching a user's message to known entities from a knowledge graph.
+
+Below is a list of entity names that currently exist in the knowledge graph. They may be in English, Indonesian, or Bengali, and may be short names or full descriptive phrases extracted from documents:
+{names_list}
+
+User's message: {user_message}
+Candidate keywords already extracted: {', '.join(raw_keywords) if raw_keywords else '(none)'}
+
+Task: Identify which of the entity names above (copy them EXACTLY as written, do not paraphrase or translate them) the user's message is asking about or clearly related to. Consider that a local-language term in the user's message may correspond to a differently-named entity in the list (e.g. an Indonesian social/cultural term matching an English-named entity). Only include an entity if it is clearly relevant - do not guess.
+
+Output ONLY a comma-separated list of the matched entity names, copied exactly as they appear above. If none match, output NONE."""
+
+        response = requests.post(OLLAMA_URL, headers=_ollama_headers(), json={
+            "model": MODEL_NAME,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0.1}
+        }, timeout=40)
+        response.raise_for_status()
+        data = response.json()
+
+        content = ""
+        if "message" in data and "content" in data["message"]:
+            content = data["message"]["content"].strip()
+        elif "response" in data:
+            content = data["response"].strip()
+
+        if not content or content.strip().upper() == "NONE":
+            return []
+
+        known_names_lower = {n.lower(): n for n in known_names}
+        resolved = []
+        for candidate in content.split(","):
+            candidate = candidate.strip()
+            if candidate.lower() in known_names_lower:
+                resolved.append(known_names_lower[candidate.lower()])
+        return resolved
+    except Exception as e:
+        print(f"[ENTITY RESOLUTION FAILED]: {e}")
+        return []
+
+
 def query_knowledge_graph(user_message: str) -> str:
-    
+
     raw_keywords = extract_database_keywords_via_llm(user_message)
-    
+
     stop_words = {"food", "bait", "fish", "fishing", "catch", "river", "water", "gear", "net", "how", "what", "where", "best", "the", "a", "an"}
     keywords = [kw for kw in raw_keywords if kw.lower() not in stop_words]
-    
+
+    known_names = get_known_entity_names()
+    resolved_names = resolve_keywords_to_known_entities(user_message, keywords, known_names)
+    for name in resolved_names:
+        if name not in keywords:
+            keywords.append(name)
+
     print(f"DEBUG UNIVERSAL LLM KEYWORDS SEARCHING FOR: {keywords}")
-    
+
     if not keywords:
         return ""
         
