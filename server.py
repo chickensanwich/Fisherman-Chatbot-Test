@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -17,6 +17,7 @@ import uuid
 import hashlib
 import subprocess
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
@@ -495,13 +496,28 @@ Output ONLY a comma-separated list of the matched entity names, copied exactly a
 
 def query_knowledge_graph(user_message: str) -> str:
 
-    raw_keywords = extract_database_keywords_via_llm(user_message)
+    # Keyword extraction (LLM) and fetching known entity names (Neo4j, usually
+    # served from cache) don't depend on each other - run them concurrently
+    # instead of back-to-back to shave a full round trip off every request.
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        keywords_future = executor.submit(extract_database_keywords_via_llm, user_message)
+        names_future    = executor.submit(get_known_entity_names)
+        raw_keywords    = keywords_future.result()
+        known_names     = names_future.result()
 
     stop_words = {"food", "bait", "fish", "fishing", "catch", "river", "water", "gear", "net", "how", "what", "where", "best", "the", "a", "an"}
     keywords = [kw for kw in raw_keywords if kw.lower() not in stop_words]
 
-    known_names = get_known_entity_names()
-    resolved_names = resolve_keywords_to_known_entities(user_message, keywords, known_names)
+    # The entity-resolution LLM call exists to bridge cases where the extracted
+    # keyword doesn't literally match a graph entity's name (translations,
+    # local terms, etc). If every keyword already matches one directly, that
+    # call would be pure added latency for no benefit, so skip it.
+    known_names_lower = {n.lower() for n in known_names}
+    if keywords and all(kw.lower() in known_names_lower for kw in keywords):
+        resolved_names = []
+    else:
+        resolved_names = resolve_keywords_to_known_entities(user_message, keywords, known_names)
+
     for name in resolved_names:
         if name not in keywords:
             keywords.append(name)
@@ -840,7 +856,7 @@ def save_chat_message(fisherman_id: str, chat_id: str, user_message: str, bot_re
 
 # ====================== MAIN CHAT ENDPOINT ======================
 @app.post("/chat")
-async def chat_endpoint(request: ChatRequest, x_fisherman_id: str = Header(...)):
+async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks, x_fisherman_id: str = Header(...)):
     fisherman_id = await require_approved_user(x_fisherman_id)
     user_message = request.message.strip()
     chat_id      = request.chat_id
@@ -848,18 +864,26 @@ async def chat_endpoint(request: ChatRequest, x_fisherman_id: str = Header(...))
     detected_lang     = detect_language(user_message)
     lang              = resolve_lang(detected_lang)
     needs_translation = lang in {"id", "bn"}
-    english_message   = translate(user_message, lang, "en") if needs_translation else user_message
-    
-    
-    kg_context = await asyncio.to_thread(query_knowledge_graph, user_message)
-    
+
+    # Input translation and the KG lookup don't depend on each other - run them
+    # concurrently instead of back-to-back.
+    kg_task = asyncio.to_thread(query_knowledge_graph, user_message)
+    if needs_translation:
+        english_message, kg_context = await asyncio.gather(
+            asyncio.to_thread(translate, user_message, lang, "en"),
+            kg_task,
+        )
+    else:
+        english_message = user_message
+        kg_context       = await kg_task
+
     print(f"\n=== DEBUG: detected_lang={detected_lang} resolved_lang={lang} ===")
     print("=== DEBUG: CONTEXT SENT TO LLM ===")
     print(kg_context)
     print("==================================\n")
 
     async def auto_update_title_if_default(reply_text: str):
-        
+
         chats_current = _load_chats()
         current_chat = next((c for c in chats_current if c["chat_id"] == chat_id), None)
         if current_chat and current_chat.get("title") == "নতুন চ্যাট":
@@ -868,11 +892,13 @@ async def chat_endpoint(request: ChatRequest, x_fisherman_id: str = Header(...))
                 current_chat["title"] = new_title
                 _save_chats(chats_current)
 
-   
+    # Chat-title generation is cosmetic sidebar metadata, not part of the answer
+    # the user is waiting on - run it after the response is sent instead of
+    # making them wait through a 4th LLM call for it.
     if not kg_context:
         fallback_reply = FALLBACK_REPLY.get(lang, FALLBACK_REPLY[DEFAULT_LANG])
         save_chat_message(fisherman_id, chat_id, user_message, fallback_reply)
-        await auto_update_title_if_default(fallback_reply)
+        background_tasks.add_task(auto_update_title_if_default, fallback_reply)
         return {"reply": fallback_reply, "lang": lang}
 
    
@@ -914,7 +940,7 @@ async def chat_endpoint(request: ChatRequest, x_fisherman_id: str = Header(...))
 
 
         save_chat_message(fisherman_id, chat_id, user_message, final_reply)
-        await auto_update_title_if_default(final_reply)
+        background_tasks.add_task(auto_update_title_if_default, final_reply)
 
         return {"reply": final_reply, "lang": lang}
 
