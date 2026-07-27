@@ -300,9 +300,19 @@ ERROR_REPLY = {
 }
 
 
+_BENGALI_SCRIPT_RE = re.compile(r'[ঀ-৿]')
+
+
 def detect_language(text: str) -> str:
     if not text or not text.strip():
         return DEFAULT_LANG
+    # Bengali uses its own Unicode block, so this is unambiguous - skip
+    # langdetect entirely when we can already tell from the script alone.
+    # langdetect is unreliable on short/mixed-language text (e.g. it has
+    # misclassified plain Bengali sentences as Indonesian), so avoid relying
+    # on it for the one case we can resolve with certainty up front.
+    if _BENGALI_SCRIPT_RE.search(text):
+        return "bn"
     try:
         return langdetect.detect(text.strip())
     except Exception:
@@ -604,6 +614,19 @@ def query_knowledge_graph(user_message: str) -> str:
         context_lines.append(fact_string)
 
     final_context = "Relevant database facts:\n" + "\n".join(context_lines) if context_lines else ""
+
+    # If any facts came from resolved (not literally-matched) entities, the
+    # user's own wording likely differs from the names above - e.g. a local
+    # term, or a term the input-translation step mangled before the final
+    # answer is generated. Say so explicitly so the answer-generation LLM
+    # doesn't fail to connect its own (possibly garbled) input to these facts.
+    if final_context and resolved_names:
+        final_context += (
+            "\n\nNote: the user's own wording may not match the entity names above "
+            "(e.g. due to translation or local terminology) - the following database "
+            f"entities were identified as relevant to their message regardless: {', '.join(resolved_names)}."
+        )
+
     return final_context
 
 # ====================== AUTO-GENERATE CHAT TITLE ======================
