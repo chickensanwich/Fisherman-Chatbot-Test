@@ -716,6 +716,7 @@ async function sendMessageToBackend(message) {
         const data = await res.json();
         removeTypingIndicator();
         addMessage(data.reply, 'bot', data.lang);
+        if (data.lang && data.lang !== getUILang()) setUILang(data.lang);
         await loadUserChats();
     } catch (err) {
         removeTypingIndicator();

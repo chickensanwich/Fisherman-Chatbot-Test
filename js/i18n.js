@@ -477,6 +477,10 @@ function setUILang(lang) {
     localStorage.setItem(UI_LANG_STORAGE_KEY, lang);
     document.documentElement.setAttribute('lang', lang);
     applyTranslations();
+
+    const langSelect = document.getElementById('lang-select');
+    if (langSelect && langSelect.value !== lang) langSelect.value = lang;
+
     document.dispatchEvent(new CustomEvent('uilangchange', { detail: { lang } }));
 }
 
