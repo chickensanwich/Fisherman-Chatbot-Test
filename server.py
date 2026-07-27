@@ -509,11 +509,18 @@ def query_knowledge_graph(user_message: str) -> str:
     keywords = [kw for kw in raw_keywords if kw.lower() not in stop_words]
 
     # The entity-resolution LLM call exists to bridge cases where the extracted
-    # keyword doesn't literally match a graph entity's name (translations,
-    # local terms, etc). If every keyword already matches one directly, that
-    # call would be pure added latency for no benefit, so skip it.
+    # keyword doesn't match a graph entity's name at all (translations, local
+    # terms, etc). The Cypher match below considers a keyword a hit whenever a
+    # node's name CONTAINS it as a substring (not exact equality) - mirror that
+    # same test here, otherwise minor extraction variation (e.g. singular vs
+    # plural) makes this check fail even though the query would've matched fine,
+    # defeating the whole point of skipping the extra call.
     known_names_lower = {n.lower() for n in known_names}
-    if keywords and all(kw.lower() in known_names_lower for kw in keywords):
+    def _already_matches(kw: str) -> bool:
+        kw_lower = kw.lower()
+        return any(kw_lower in name for name in known_names_lower)
+
+    if keywords and all(_already_matches(kw) for kw in keywords):
         resolved_names = []
     else:
         resolved_names = resolve_keywords_to_known_entities(user_message, keywords, known_names)
