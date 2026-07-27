@@ -932,14 +932,27 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks,
         return {"reply": fallback_reply, "lang": lang}
 
    
+    # Machine translation can mangle a specific term (e.g. a local/foreign name
+    # that also appears verbatim in [DATABASE FACTS]) into an unrelated English
+    # word, which then stops the model from connecting its own retrieved facts
+    # back to the question. Including the untranslated original alongside the
+    # translated message lets the model bridge that gap itself when needed.
+    user_content = english_message
+    if needs_translation and english_message != user_message:
+        user_content = (
+            f"{english_message}\n\n"
+            f"(Original message before translation, in case any term above was "
+            f"mistranslated: {user_message})"
+        )
+
     llm_messages = [
         {
-            "role": "system", 
+            "role": "system",
             "content": f"{SYSTEM_PROMPT}\n\n[DATABASE FACTS]\n{kg_context}"
         },
         {
             "role": "user",
-            "content": english_message
+            "content": user_content
         }
     ]
 
