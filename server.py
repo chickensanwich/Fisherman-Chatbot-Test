@@ -592,6 +592,7 @@ def query_knowledge_graph(user_message: str) -> str:
             keywords=keywords
         )
 
+        matched_entity_names = set()
         for record in result:
             start_label = record["start_label"]
             start_name = record["start_name"]
@@ -599,6 +600,8 @@ def query_knowledge_graph(user_message: str) -> str:
             end_name = record["end_name"]
             clean_rel = record["r_type"].lower().replace("_", " ")
 
+            matched_entity_names.add(start_name)
+            matched_entity_names.add(end_name)
 
             entity_key = f"[{start_label}] '{start_name}'"
 
@@ -607,7 +610,7 @@ def query_knowledge_graph(user_message: str) -> str:
 
             grouped_facts[entity_key].add(f"[{clean_rel}] {end_label} '{end_name}'")
 
-   
+
     context_lines = []
     for entity, facts in grouped_facts.items():
         fact_string = f"- {entity} -> " + " | ".join(list(facts))
@@ -615,16 +618,17 @@ def query_knowledge_graph(user_message: str) -> str:
 
     final_context = "Relevant database facts:\n" + "\n".join(context_lines) if context_lines else ""
 
-    # If any facts came from resolved (not literally-matched) entities, the
-    # user's own wording likely differs from the names above - e.g. a local
-    # term, or a term the input-translation step mangled before the final
-    # answer is generated. Say so explicitly so the answer-generation LLM
-    # doesn't fail to connect its own (possibly garbled) input to these facts.
-    if final_context and resolved_names:
+    # The user's own wording (or its machine translation) frequently won't
+    # match these entity names exactly - a local term, an alias, or a mangled
+    # translation. Explicitly tell the answer-generation LLM these entities
+    # ARE what the question is about, so it doesn't decline just because the
+    # surface wording differs from the facts it was just given.
+    if final_context and matched_entity_names:
         final_context += (
-            "\n\nNote: the user's own wording may not match the entity names above "
-            "(e.g. due to translation or local terminology) - the following database "
-            f"entities were identified as relevant to their message regardless: {', '.join(resolved_names)}."
+            "\n\nNote: the user's message may refer to the entities above using "
+            "different wording (a local term, an alias, or a mistranslation) - "
+            "treat the following as confirmed relevant to their question and use "
+            f"the facts above to answer: {', '.join(sorted(matched_entity_names))}."
         )
 
     return final_context
