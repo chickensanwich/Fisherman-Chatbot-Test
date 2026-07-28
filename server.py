@@ -302,6 +302,33 @@ ERROR_REPLY = {
 
 _BENGALI_SCRIPT_RE = re.compile(r'[ঀ-৿]')
 
+# Used only as a tie-breaker when langdetect calls a message Indonesian/Bengali
+# but it's structurally an English sentence with one foreign/local word mixed
+# in (e.g. a knowledge-graph entity name like "punggawa") - langdetect judges
+# the whole message by that one word otherwise. Deliberately short: common
+# function words are enough to signal "this sentence is built in English/
+# Indonesian", without trying to be a real language classifier.
+_ENGLISH_STOPWORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "what", "tell", "me", "about",
+    "how", "when", "where", "why", "who", "which", "do", "does", "did", "can",
+    "could", "would", "should", "i", "you", "we", "they", "it", "this", "that",
+    "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "best",
+    "good", "your",
+}
+_INDONESIAN_STOPWORDS = {
+    "apa", "bagaimana", "kapan", "di", "mengapa", "kenapa", "siapa", "yang",
+    "adalah", "ini", "itu", "dan", "atau", "tapi", "tetapi", "ke", "dari",
+    "untuk", "dengan", "saya", "anda", "kami", "kita", "mereka", "tidak",
+    "juga", "akan", "sudah", "bisa", "dapat", "apakah", "ada", "paling",
+}
+
+
+def _looks_structurally_english(text: str) -> bool:
+    words = re.findall(r"[a-zA-Z]+", text.lower())
+    en_hits = sum(1 for w in words if w in _ENGLISH_STOPWORDS)
+    id_hits = sum(1 for w in words if w in _INDONESIAN_STOPWORDS)
+    return en_hits >= 2 and en_hits > id_hits
+
 
 def detect_language(text: str) -> str:
     if not text or not text.strip():
@@ -314,9 +341,20 @@ def detect_language(text: str) -> str:
     if _BENGALI_SCRIPT_RE.search(text):
         return "bn"
     try:
-        return langdetect.detect(text.strip())
+        detected = langdetect.detect(text.strip())
     except Exception:
         return DEFAULT_LANG
+
+    # langdetect misfires when an otherwise-English sentence contains a
+    # single foreign/local word (very common here, since KG entity names are
+    # frequently Indonesian terms like "punggawa"). If the sentence is
+    # clearly built from English function words with no competing Indonesian
+    # ones, trust that over the raw guess. Genuinely ambiguous/short text
+    # (no clear English signal either) still falls through to the existing
+    # "default to Indonesian" behavior below via resolve_lang.
+    if detected != "en" and _looks_structurally_english(text):
+        return "en"
+    return detected
 
 
 def resolve_lang(detected_lang: str) -> str:
