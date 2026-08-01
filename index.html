@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>মৎস্যজীবী চ্যাটবট</title>
+    <title>Chatbot Nelayan</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -24,77 +24,77 @@
     <div class="container" id="login-container">
         <div class="form-container">
             <div class="logo">
-                <img src="assets/fishermen-logo.svg" data-i18n="appLogoAlt" alt="মৎস্যজীবী চ্যাটবট লোগো">
-                <h1 data-i18n="appTitle">মৎস্যজীবী চ্যাটবট</h1>
+                <img src="assets/fishermen-logo.svg" data-i18n="appLogoAlt" alt="Logo Chatbot Nelayan">
+                <h1 data-i18n="appTitle">Chatbot Nelayan</h1>
             </div>
-            <h2 data-i18n="login.heading">প্রবেশ করুন</h2>
+            <h2 data-i18n="login.heading">Masuk</h2>
             <form id="login-form">
                 <div class="form-group">
-                    <label for="login-fisherman-id" data-i18n="login.idLabel">মৎস্যজীবী আইডি</label>
-                    <input type="text" id="login-fisherman-id" data-i18n-placeholder="login.idPlaceholder" placeholder="আপনার মৎস্যজীবী আইডি লিখুন" required>
+                    <label for="login-fisherman-id" data-i18n="login.idLabel">ID Nelayan</label>
+                    <input type="text" id="login-fisherman-id" data-i18n-placeholder="login.idPlaceholder" placeholder="Masukkan ID Nelayan Anda" required>
                 </div>
                 <div class="form-group">
-                    <label for="login-password" data-i18n="login.passwordLabel">পাসওয়ার্ড</label>
-                    <input type="password" id="login-password" data-i18n-placeholder="login.passwordPlaceholder" placeholder="আপনার পাসওয়ার্ড লিখুন" required>
+                    <label for="login-password" data-i18n="login.passwordLabel">Kata Sandi</label>
+                    <input type="password" id="login-password" data-i18n-placeholder="login.passwordPlaceholder" placeholder="Masukkan kata sandi Anda" required>
                     <span class="toggle-password" onclick="togglePasswordVisibility('login-password')">
                         <i class="fas fa-eye"></i>
                     </span>
                 </div>
-                <button type="submit" class="btn-primary" data-i18n="login.submit">প্রবেশ করুন</button>
+                <button type="submit" class="btn-primary" data-i18n="login.submit">Masuk</button>
             </form>
-            <p class="form-footer"><span data-i18n="login.noAccount">অ্যাকাউন্ট নেই?</span> <a href="#" onclick="showSignup()" data-i18n="login.signupLink">নতুন অ্যাকাউন্ট তৈরি করুন</a></p>
+            <p class="form-footer"><span data-i18n="login.noAccount">Belum punya akun?</span> <a href="#" onclick="showSignup()" data-i18n="login.signupLink">Buat akun baru</a></p>
         </div>
     </div>
 
     <div class="container hidden" id="signup-container">
         <div class="form-container">
             <div class="logo">
-                <img src="assets/fishermen-logo.svg" data-i18n="appLogoAlt" alt="মৎস্যজীবী চ্যাটবট লোগো">
-                <h1 data-i18n="appTitle">মৎস্যজীবী চ্যাটবট</h1>
+                <img src="assets/fishermen-logo.svg" data-i18n="appLogoAlt" alt="Logo Chatbot Nelayan">
+                <h1 data-i18n="appTitle">Chatbot Nelayan</h1>
             </div>
-            <h2 data-i18n="signup.heading">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
+            <h2 data-i18n="signup.heading">Buat Akun Baru</h2>
             <form id="signup-form">
                 <div class="form-group">
-                    <label for="signup-name" data-i18n="signup.nameLabel">নাম</label>
-                    <input type="text" id="signup-name" data-i18n-placeholder="signup.namePlaceholder" placeholder="আপনার নাম লিখুন" required>
+                    <label for="signup-name" data-i18n="signup.nameLabel">Nama</label>
+                    <input type="text" id="signup-name" data-i18n-placeholder="signup.namePlaceholder" placeholder="Masukkan nama Anda" required>
                 </div>
                 <div class="form-group">
-                    <label for="signup-fisherman-id" data-i18n="login.idLabel">মৎস্যজীবী আইডি</label>
-                    <input type="text" id="signup-fisherman-id" data-i18n-placeholder="login.idPlaceholder" placeholder="আপনার মৎস্যজীবী আইডি লিখুন" required>
+                    <label for="signup-fisherman-id" data-i18n="login.idLabel">ID Nelayan</label>
+                    <input type="text" id="signup-fisherman-id" data-i18n-placeholder="login.idPlaceholder" placeholder="Masukkan ID Nelayan Anda" required>
                 </div>
                 <div class="form-group">
-                    <label for="signup-country" data-i18n="signup.countryLabel">দেশ</label>
+                    <label for="signup-country" data-i18n="signup.countryLabel">Negara</label>
                     <select id="signup-country" required>
-                        <option value="" data-i18n="signup.countryDefault">দেশ নির্বাচন করুন</option>
-                        <option value="Australia" data-i18n="country.australia">অস্ট্রেলিয়া</option>
-                        <option value="Malaysia" data-i18n="country.malaysia">মালয়েশিয়া</option>
-                        <option value="India" data-i18n="country.india">ভারত</option>
-                        <option value="Bangladesh" data-i18n="country.bangladesh">বাংলাদেশ</option>
-                        <option value="USA" data-i18n="country.usa">যুক্তরাষ্ট্র</option>
-                        <option value="UK" data-i18n="country.uk">যুক্তরাজ্য</option>
+                        <option value="" data-i18n="signup.countryDefault">Pilih negara</option>
+                        <option value="Australia" data-i18n="country.australia">Australia</option>
+                        <option value="Malaysia" data-i18n="country.malaysia">Malaysia</option>
+                        <option value="India" data-i18n="country.india">India</option>
+                        <option value="Bangladesh" data-i18n="country.bangladesh">Bangladesh</option>
+                        <option value="USA" data-i18n="country.usa">Amerika Serikat</option>
+                        <option value="UK" data-i18n="country.uk">Inggris</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="signup-location" data-i18n="signup.locationLabel">অবস্থান</label>
-                    <input type="text" id="signup-location" data-i18n-placeholder="signup.locationPlaceholder" placeholder="আপনার বর্তমান অবস্থান লিখুন" required>
+                    <label for="signup-location" data-i18n="signup.locationLabel">Lokasi</label>
+                    <input type="text" id="signup-location" data-i18n-placeholder="signup.locationPlaceholder" placeholder="Masukkan lokasi Anda saat ini" required>
                 </div>
                 <div class="form-group">
-                    <label for="signup-password" data-i18n="login.passwordLabel">পাসওয়ার্ড</label>
-                    <input type="password" id="signup-password" data-i18n-placeholder="login.passwordPlaceholder" placeholder="আপনার পাসওয়ার্ড লিখুন" minlength="8" required>
+                    <label for="signup-password" data-i18n="login.passwordLabel">Kata Sandi</label>
+                    <input type="password" id="signup-password" data-i18n-placeholder="login.passwordPlaceholder" placeholder="Masukkan kata sandi Anda" minlength="8" required>
                     <span class="toggle-password" onclick="togglePasswordVisibility('signup-password')">
                         <i class="fas fa-eye"></i>
                     </span>
                 </div>
                 <div class="form-group">
-                    <label for="signup-confirm-password" data-i18n="signup.confirmPasswordLabel">পাসওয়ার্ড নিশ্চিত করুন</label>
-                    <input type="password" id="signup-confirm-password" data-i18n-placeholder="signup.confirmPasswordPlaceholder" placeholder="পাসওয়ার্ড পুনরায় লিখুন" minlength="8" required>
+                    <label for="signup-confirm-password" data-i18n="signup.confirmPasswordLabel">Konfirmasi Kata Sandi</label>
+                    <input type="password" id="signup-confirm-password" data-i18n-placeholder="signup.confirmPasswordPlaceholder" placeholder="Masukkan ulang kata sandi Anda" minlength="8" required>
                     <span class="toggle-password" onclick="togglePasswordVisibility('signup-confirm-password')">
                         <i class="fas fa-eye"></i>
                     </span>
                 </div>
-                <button type="submit" class="btn-primary" data-i18n="signup.submit">নিবন্ধন করুন</button>
+                <button type="submit" class="btn-primary" data-i18n="signup.submit">Daftar</button>
             </form>
-            <p class="form-footer"><span data-i18n="signup.haveAccount">ইতোমধ্যে অ্যাকাউন্ট আছে?</span> <a href="#" onclick="showLogin()" data-i18n="signup.loginLink">প্রবেশ করুন</a></p>
+            <p class="form-footer"><span data-i18n="signup.haveAccount">Sudah punya akun?</span> <a href="#" onclick="showLogin()" data-i18n="signup.loginLink">Masuk</a></p>
         </div>
     </div>
 

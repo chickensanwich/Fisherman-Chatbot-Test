@@ -74,6 +74,7 @@ CRITICAL INSTRUCTIONS:
 4. NO HALLUCINATION: Do not invent fish species, baits, locations, or seasons that are not in the [DATABASE FACTS].
 5. MISSING INFORMATION: If the [DATABASE FACTS] genuinely do not contain the answer, politely state that you do not have that specific information. Do not guess.
 6. CONCISENESS: Keep your answers brief, direct, and highly accurate.
+7. PLAIN PROSE ONLY: Always write the answer as flowing prose sentences. NEVER use bullet points, numbered lists, dashes, or any other list/markdown formatting, even if the facts would naturally group into a list. This keeps the answer's structure identical before and after translation, since translating a bulleted list into Bengali/Indonesian tends to collapse it into a paragraph anyway - writing prose from the start avoids that inconsistency between languages.
 """
 NEO4J_URI      = "bolt://localhost:7687"
 NEO4J_USER     = "neo4j"

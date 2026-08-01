@@ -5,7 +5,7 @@
 // regardless of what the user picks here.
 
 const UI_LANG_STORAGE_KEY = 'uiLang';
-const DEFAULT_UI_LANG     = 'bn';
+const DEFAULT_UI_LANG     = 'id';
 
 const translations = {
     bn: {
