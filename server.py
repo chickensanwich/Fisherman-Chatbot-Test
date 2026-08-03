@@ -1032,6 +1032,8 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks,
 
         return {"reply": final_reply, "lang": lang}
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[LLM GENERATION FAILED]: {e}")
         error_reply = ERROR_REPLY.get(lang, ERROR_REPLY[DEFAULT_LANG])

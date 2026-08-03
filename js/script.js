@@ -58,6 +58,13 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.style.height = chatInput.scrollHeight + 'px';
     });
 
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            chatForm.requestSubmit();
+        }
+    });
+
     const darkToggle = document.getElementById('dark-toggle');
     if (darkToggle) {
         const isDark = localStorage.getItem('darkMode') === 'true';
