@@ -169,6 +169,17 @@ async function speakMessage(text, btn, lang) {
 let liveTranscriptEl, voiceMicActive, voiceSendBtn;
 let voiceTranscriptReady = false;
 
+// Firefox's MediaRecorder defaults to an Ogg container when no mimeType is
+// requested, while Chrome/Edge default to WebM - explicitly picking one (and
+// tagging the resulting Blob with mediaRecorder.mimeType instead of a
+// hardcoded guess) keeps the label accurate so the backend picks the right
+// Speech-to-Text encoding (OGG_OPUS vs WEBM_OPUS) instead of mismatching them.
+function pickAudioRecorderOptions() {
+    const candidates = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/ogg'];
+    const mimeType = candidates.find(type => MediaRecorder.isTypeSupported(type));
+    return mimeType ? { mimeType } : {};
+}
+
 function initSpeechRecognition() {
     liveTranscriptEl = document.getElementById('live-transcript');
     voiceMicActive   = document.getElementById('voice-mic-active');
@@ -190,7 +201,7 @@ async function openVoicePopup() {
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder = new MediaRecorder(stream, pickAudioRecorderOptions());
         audioChunks   = [];
 
         mediaRecorder.ondataavailable = event => {
@@ -201,7 +212,7 @@ async function openVoicePopup() {
             liveTranscriptEl.textContent   = t('voice.transcribingWait');
             liveTranscriptEl.style.opacity = '0.7';
             voiceMicActive.classList.remove('listening');
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
             await processAudioWithGoogleSTT(audioBlob);
             stream.getTracks().forEach(track => track.stop());
         };
@@ -996,13 +1007,13 @@ async function startContribMic() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     contribAudioChunks = [];
-    contribMediaRecorder = new MediaRecorder(stream);
+    contribMediaRecorder = new MediaRecorder(stream, pickAudioRecorderOptions());
     contribMediaRecorder.ondataavailable = e => { if (e.data.size > 0) contribAudioChunks.push(e.data); };
     contribMediaRecorder.onstop = async () => {
       transcript.textContent = t('contribute.transcribing');
       transcript.style.opacity = '0.7';
       micBtn.classList.remove('listening');
-      const blob = new Blob(contribAudioChunks, { type: 'audio/webm' });
+      const blob = new Blob(contribAudioChunks, { type: contribMediaRecorder.mimeType });
       await transcribeContribAudio(blob);
       stream.getTracks().forEach(t => t.stop());
     };
