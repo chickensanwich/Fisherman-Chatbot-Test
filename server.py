@@ -70,13 +70,14 @@ Your primary directive is to answer the user's questions based EXCLUSIVELY on th
 FORMATTING RULE (read this first, it overrides your default habits): Write the entire answer as plain prose - ordinary paragraphs made of full sentences, joined with words like "and", "as well as", or commas. You are FORBIDDEN from using bullet points, numbered lists, dashes, asterisks, markdown bold/headings, or a line break between items, even when the facts would naturally group into a list. For example, if the facts are that X is forbidden, Y is forbidden, and Z is forbidden, write "X, Y, and Z are forbidden" as one sentence - do NOT put X, Y, and Z on separate lines or after dashes. This rule applies no matter what language you are answering in.
 
 CRITICAL INSTRUCTIONS:
-1. NO GREETINGS: DO NOT introduce yourself. DO NOT say "Hello" or "I am a chatbot." Start your response IMMEDIATELY with the answer.
+1. NO UNSOLICITED GREETINGS: when answering a real question, DO NOT preface it with "Hello" or "I am a chatbot" or any self-introduction. Start your response IMMEDIATELY with the answer.
 2. SYNONYM RESOLUTION & LOGIC: Logically connect the user's intent to the facts. If the user asks for the "best", "right", or "good" bait/gear, and the database says a bait "attracts" or a gear "is suitable for" that fish, treat that as the correct answer.
 3. MULTI-HOP DEDUCTION: If a user asks what fish are in a location, and the database says Location A has River B, and River B contains Fish C, you must deduce that Fish C is found in Location A.
 4. NO HALLUCINATION: Do not invent fish species, baits, locations, or seasons that are not in the [DATABASE FACTS].
-5. MISSING INFORMATION: If the [DATABASE FACTS] genuinely do not contain the answer, politely state that you do not have that specific information. Do not guess.
+5. MISSING INFORMATION: If the user asked a real question and the [DATABASE FACTS] genuinely do not contain the answer, politely state that you do not have that specific information. Do not guess.
 6. CONCISENESS: Keep your answers brief, direct, and highly accurate.
 7. PLAIN PROSE ONLY: Follow the FORMATTING RULE above in every response, in every language - no bullet points, numbered lists, or markdown, ever. This keeps the answer's structure identical before and after translation, since translating a bulleted list into Bengali/Indonesian tends to collapse it into a paragraph anyway - writing prose from the start avoids that inconsistency between languages.
+8. GREETINGS & SMALL TALK: If the user's message is a greeting, thanks, farewell, or general pleasantry rather than a real question - even when [DATABASE FACTS] is empty - respond naturally and warmly in kind (in the same language as the user), like a friendly fishing assistant would. Only invoke rule 5 (declining for missing information) when the user has actually asked a question you lack facts for; never decline a simple greeting or thank-you.
 """
 NEO4J_URI      = "bolt://localhost:7687"
 NEO4J_USER     = "neo4j"
@@ -229,7 +230,7 @@ async def require_approved_user(x_fisherman_id: str = Header(...)) -> str:
     users = _load_users()
     user  = next((u for u in users if u["fishermanId"] == x_fisherman_id), None)
     if not user:
-        raise HTTPException(status_code=401, detail="Unknown Fisherman ID.")
+        raise HTTPException(status_code=401, detail="Unknown Phone Number.")
     if user["status"] == "pending":
         raise HTTPException(status_code=403, detail="Account pending admin approval.")
     if user["status"] == "rejected":
@@ -291,11 +292,6 @@ DEFAULT_LANG = "id"
 
 LANG_NAME = {"id": "Bahasa Indonesia", "en": "English", "bn": "Bangla"}
 
-FALLBACK_REPLY = {
-    "id": "Informasi ini belum tersedia saat ini.",
-    "bn": "এই তথ্য আমার কাছে এখন নেই।",
-    "en": "I don't have that information right now.",
-}
 ERROR_REPLY = {
     "id": "Maaf, terjadi masalah internal.",
     "bn": "দুঃখিত, একটি অভ্যন্তরীণ সমস্যা হয়েছে।",
@@ -716,7 +712,7 @@ Title (return only the title, do not give any explanation or quotation marks):""
 async def signup(request: SignupRequest):
     users = _load_users()
     if any(u["fishermanId"] == request.fishermanId for u in users):
-        raise HTTPException(status_code=409, detail="Fisherman ID already registered.")
+        raise HTTPException(status_code=409, detail="Phone Number already registered.")
     users.append({
         "fishermanId":    request.fishermanId,
         "name":           request.name,
@@ -735,7 +731,7 @@ async def login(request: LoginRequest):
     users = _load_users()
     user  = next((u for u in users if u["fishermanId"] == request.fishermanId), None)
     if not user or user["password_hash"] != _hash_password(request.password):
-        raise HTTPException(status_code=401, detail="Invalid Fisherman ID or password.")
+        raise HTTPException(status_code=401, detail="Invalid Phone Number or password.")
     if user["status"] == "pending":
         raise HTTPException(status_code=403, detail="Your account is pending admin approval.")
     if user["status"] == "rejected":
@@ -970,13 +966,7 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks,
     # Chat-title generation is cosmetic sidebar metadata, not part of the answer
     # the user is waiting on - run it after the response is sent instead of
     # making them wait through a 4th LLM call for it.
-    if not kg_context:
-        fallback_reply = FALLBACK_REPLY.get(lang, FALLBACK_REPLY[DEFAULT_LANG])
-        save_chat_message(fisherman_id, chat_id, user_message, fallback_reply)
-        background_tasks.add_task(auto_update_title_if_default, fallback_reply)
-        return {"reply": fallback_reply, "lang": lang}
 
-   
     # Machine translation can mangle a specific term (e.g. a local/foreign name
     # that also appears verbatim in [DATABASE FACTS]) into an unrelated English
     # word, which then stops the model from connecting its own retrieved facts
@@ -993,7 +983,7 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks,
     llm_messages = [
         {
             "role": "system",
-            "content": f"{SYSTEM_PROMPT}\n\n[DATABASE FACTS]\n{kg_context}"
+            "content": f"{SYSTEM_PROMPT}\n\n[DATABASE FACTS]\n{kg_context or '(No facts were retrieved for this message.)'}"
         },
         {
             "role": "user",
